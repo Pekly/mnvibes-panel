@@ -1,0 +1,1247 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MongolVibes | Panel</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/feather-icons"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;700&family=Silkscreen&display=swap');
+    </style>
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['IBM Plex Sans', 'sans-serif'],
+                        pixel: ['Silkscreen', 'cursive'],
+                        mono: ['JetBrains Mono', 'monospace'],
+                    },
+                    colors: {
+                        brand: {
+                            bg: '#09090b', 
+                            accent: '#22c55e', 
+                            surface: '#27272a',
+                            border: '#3f3f46',
+                            dark: '#050505'
+                        }
+                    },
+                    animation: {
+                        'pulse-slow': 'pulse 4s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+                        'load-bar': 'loadBar 2s ease-in-out infinite',
+                        'terminal-blink': 'blink 1s step-end infinite',
+                        'fade-in': 'fadeIn 0.2s ease-out forwards',
+                    },
+                    keyframes: {
+                        blink: { '0%, 100%': { opacity: '1' }, '50%': { opacity: '0' } },
+                        loadBar: {
+                            '0%': { width: '0%', left: '0%' },
+                            '50%': { width: '100%', left: '0%' },
+                            '100%': { width: '0%', left: '100%' }
+                        },
+                        fadeIn: {
+                            '0%': { opacity: '0', transform: 'scale(0.95)' },
+                            '100%': { opacity: '1', transform: 'scale(1)' }
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        body {
+            background-color: #050505;
+            color: #e4e4e7;
+            font-family: 'IBM Plex Sans', sans-serif;
+            overflow: hidden; 
+        }
+        
+        .panel-scroll { overflow-y: auto; }
+
+        .modal-glass {
+            background: rgba(10, 10, 12, 0.6);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            box-shadow: 0 40px 80px -12px rgba(0, 0, 0, 0.8), inset 0 0 0 1px rgba(255, 255, 255, 0.05);
+        }
+
+        .btn-glitch {
+            position: relative; overflow: hidden; transition: all 0.2s ease;
+        }
+        .btn-glitch:hover { transform: scale(1.02); box-shadow: 0 0 20px rgba(34, 197, 94, 0.4); color: white; }
+        .btn-glitch::before {
+            content: ''; position: absolute; top: 0; left: -100%; width: 100%; height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent); transition: 0.5s;
+        }
+        .btn-glitch:hover::before { left: 100%; }
+
+        .input-dark {
+            background: rgba(0, 0, 0, 0.4); border: 1px solid rgba(255, 255, 255, 0.1); color: #fff; transition: all 0.3s ease;
+        }
+        .input-dark:focus {
+            border-color: #22c55e; box-shadow: 0 0 0 2px rgba(34, 197, 94, 0.1); outline: none; background: rgba(0, 0, 0, 0.6);
+        }
+
+        .scanline {
+            width: 100%; height: 100px; z-index: 10;
+            background: linear-gradient(0deg, rgba(0,0,0,0) 0%, rgba(34, 197, 94, 0.03) 50%, rgba(0,0,0,0) 100%);
+            opacity: 0.1; position: absolute; bottom: 100%; animation: scanline 10s linear infinite; pointer-events: none;
+        }
+        @keyframes scanline { 0% { bottom: 100%; } 100% { bottom: -100%; } }
+
+        .sidebar-link {
+            display: flex; align-items: center; justify-content: center; height: 48px; width: 48px; margin: 0 auto 8px auto;
+            color: #a1a1aa; transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); position: relative; overflow: hidden; 
+            cursor: pointer; border-radius: 8px;
+        }
+        .sidebar-link:hover, .sidebar-link.active { background-color: rgba(34, 197, 94, 0.1); color: white; }
+        .sidebar-link.active i { color: #22c55e; }
+        .sidebar-link::before {
+            content: ''; position: absolute; left: 0; top: 10%; height: 80%; width: 3px; background: #22c55e; border-radius: 0 4px 4px 0; opacity: 0; transform: translateX(-100%); transition: all 0.3s ease;
+        }
+        .sidebar-link.active::before { opacity: 1; transform: translateX(0); }
+
+        .server-sidebar-link {
+            display: flex; align-items: center; padding: 10px 16px; color: #a1a1aa; font-size: 13px; font-family: 'IBM Plex Sans', sans-serif; transition: all 0.2s; border-radius: 6px; margin-bottom: 2px; cursor: pointer;
+        }
+        .server-sidebar-link:hover { background: rgba(255, 255, 255, 0.05); color: white; }
+        .server-sidebar-link.active { background: rgba(34, 197, 94, 0.1); color: #22c55e; font-weight: 600; }
+        .server-sidebar-link i { width: 24px; text-align: center; margin-right: 12px; font-size: 14px; }
+
+        .server-card { background: rgba(24, 24, 27, 0.6); border: 1px solid rgba(255, 255, 255, 0.05); transition: all 0.2s ease; }
+        .server-card:hover { background: rgba(24, 24, 27, 0.9); border-color: #22c55e; transform: translateY(-2px); }
+
+        .resource-bar { background: rgba(255,255,255,0.1); height: 4px; border-radius: 2px; overflow: hidden; }
+        .resource-fill { height: 100%; background: #22c55e; width: 0%; transition: width 1s ease-out; }
+        
+        .view-container { display: none; width: 100%; height: 100%; }
+        .view-container.active { display: block; }
+        .fade-enter-active { animation: fadeIn 0.5s forwards; }
+        @keyframes fadeIn { from { opacity: 0; transform: scale(0.98); } to { opacity: 1; transform: scale(1); } }
+
+        /* Recaptcha */
+        .recaptcha-compact { width: 42px; height: 42px; transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1); overflow: hidden; white-space: nowrap; background: rgba(9, 9, 11, 0.6); backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 4px; display: flex; align-items: center; }
+        .recaptcha-compact:hover { width: 260px; background: rgba(24, 24, 27, 0.95); border-color: rgba(34, 197, 94, 0.3); }
+        .recaptcha-logo-container { width: 42px; height: 42px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+        .recaptcha-text { opacity: 0; transition: opacity 0.2s 0.1s; padding-left: 10px; color: #a1a1aa; font-size: 10px; display: flex; flex-direction: column; justify-content: center; }
+        .recaptcha-compact:hover .recaptcha-text { opacity: 1; }
+
+        /* Custom Checkbox */
+        .custom-checkbox {
+            appearance: none; background-color: #18181b; border: 1px solid #3f3f46; width: 1rem; height: 1rem; border-radius: 0.25rem; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.2s; position: relative;
+        }
+        .custom-checkbox:checked { background-color: #22c55e; border-color: #22c55e; }
+        .custom-checkbox:checked::after { content: '\2713'; font-size: 0.75rem; color: black; font-weight: bold; position: absolute; }
+        .custom-checkbox:hover { border-color: #22c55e; }
+
+        .console-line { font-family: 'JetBrains Mono', monospace; font-size: 11px; margin-bottom: 2px; line-height: 1.4; word-break: break-all; }
+        .file-row { display: flex; align-items: center; padding: 12px 16px; border-bottom: 1px solid rgba(255,255,255,0.05); transition: background 0.2s; }
+        .file-row:hover { background: rgba(255,255,255,0.03); }
+        .file-icon { width: 24px; text-align: center; color: #71717a; margin-right: 12px; }
+
+        /* Search Modal Styles */
+        .search-backdrop {
+            position: fixed; inset: 0; background: rgba(0,0,0,0.8); backdrop-filter: blur(4px); z-index: 100;
+            display: none; align-items: flex-start; justify-content: center; padding-top: 10vh;
+        }
+        .search-backdrop.active { display: flex; animation: fadeIn 0.2s ease-out; }
+        
+        .cursor-copy { cursor: copy; }
+    </style>
+</head>
+<body class="h-screen bg-brand-dark selection:bg-brand-accent selection:text-black text-zinc-300">
+
+    <div class="noise-overlay"></div>
+    <div class="fixed inset-0 z-[-1] bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-blue-900/10 via-zinc-950/90 to-zinc-950 pointer-events-none"></div>
+
+    <!-- LOADING SCREEN -->
+    <div id="loading-screen" class="fixed inset-0 z-[100] bg-[#050505] flex items-center justify-center transition-opacity duration-500">
+        <div class="text-center w-64">
+            <div class="w-16 h-16 relative mx-auto mb-6">
+                <div class="absolute inset-0 border-4 border-zinc-800 rounded-full"></div>
+                <div class="absolute inset-0 border-4 border-t-red-600 border-r-transparent border-b-transparent border-l-transparent rounded-full animate-spin"></div>
+                <img src="https://i.ibb.co/27YWBW6M/Picsart-25-12-04-05-19-25-855.png" class="absolute inset-0 m-auto w-8 h-8 object-contain animate-pulse">
+            </div>
+            <div class="h-1 w-full bg-zinc-800 rounded-full overflow-hidden mb-2">
+                <div class="h-full bg-red-600 animate-load-bar w-1/3 relative"></div>
+            </div>
+            <p id="loading-text" class="font-mono text-red-600 tracking-widest text-xs uppercase animate-pulse">Initializing...</p>
+        </div>
+    </div>
+
+    <!-- SEARCH MODAL -->
+    <div id="search-modal" class="search-backdrop" onclick="if(event.target === this) toggleSearch()">
+        <div class="w-full max-w-2xl bg-zinc-900 border border-white/10 rounded-lg shadow-2xl overflow-hidden animate-fade-in mx-4">
+            <div class="relative border-b border-white/5">
+                <i class="fas fa-search absolute left-4 top-1/2 -translate-y-1/2 text-zinc-500"></i>
+                <input type="text" id="global-search-input" class="w-full bg-transparent border-none py-4 pl-12 pr-4 text-white placeholder-zinc-600 focus:outline-none font-mono" placeholder="Search servers..." oninput="handleSearchInput(this.value)">
+                <div class="absolute right-4 top-1/2 -translate-y-1/2 text-[10px] text-zinc-600 border border-zinc-800 px-1.5 rounded bg-zinc-900/50 hidden md:block">ESC</div>
+            </div>
+            <div class="max-h-[60vh] overflow-y-auto custom-scrollbar" id="search-results">
+                <div class="p-8 text-center text-zinc-600 text-sm font-mono" id="search-empty-state">
+                    Start typing to search...
+                </div>
+            </div>
+            <div class="bg-zinc-950/50 px-4 py-2 border-t border-white/5 flex justify-between items-center text-[10px] text-zinc-600 font-mono">
+                <span>Search Term</span>
+                <span>Enter a server name, uuid, or allocation to begin searching.</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- LOGIN CONTAINER -->
+    <div id="login-container" class="view-container h-screen flex items-center justify-center p-4">
+        <div class="w-full max-w-4xl modal-glass rounded-xl overflow-hidden shadow-2xl relative border border-white/5 transform transition-all hover:scale-[1.005] duration-500 perspective-1000">
+            <div class="scanline"></div>
+            <div class="bg-black/40 h-10 flex justify-between items-center relative z-20 select-none border-b border-white/5 px-4">
+                <div class="flex items-center gap-3">
+                    <i class="fas fa-terminal text-brand-accent text-xs animate-pulse"></i>
+                    <span class="font-mono text-[10px] text-zinc-400 uppercase tracking-widest">System Access Point</span>
+                </div>
+                <div class="flex items-center gap-2">
+                    <span class="w-2 h-2 rounded-full bg-brand-accent animate-pulse"></span>
+                    <span class="font-mono text-[10px] text-brand-accent">ONLINE</span>
+                </div>
+            </div>
+
+            <div class="flex flex-col md:flex-row relative z-10">
+                <div class="md:w-5/12 bg-black/20 border-r border-white/5 relative p-8 flex flex-col justify-center items-center overflow-hidden">
+                    <div class="absolute inset-0 bg-red-600 blur-[40px] opacity-20"></div>
+                    <div class="relative z-10 text-center">
+                        <div class="relative w-24 h-24 mx-auto mb-6 group cursor-default">
+                            <img src="https://i.ibb.co/27YWBW6M/Picsart-25-12-04-05-19-25-855.png" alt="Logo" class="w-full h-full object-contain relative z-10 drop-shadow-[0_0_15px_rgba(220,38,38,0.3)] transform transition-transform group-hover:rotate-12 group-hover:scale-110 duration-500">
+                        </div>
+                        <h1 class="text-3xl font-pixel text-white mb-2 tracking-tighter">MONGOLVIBES</h1>
+                    </div>
+                </div>
+
+                <div class="md:w-7/12 p-8 md:p-10 bg-zinc-900/10 flex flex-col justify-center relative min-h-[450px]">
+                    <div id="view-login" class="block opacity-100 transition-all duration-300">
+                        <h2 class="text-xl font-pixel text-white mb-6">LOGIN TO CONTINUE</h2>
+                        <form onsubmit="handleLogin(event)" class="space-y-5 relative z-20">
+                            <div class="space-y-1.5 group">
+                                <label class="font-mono text-[10px] text-zinc-500 uppercase font-bold tracking-wider">Username / Email</label>
+                                <input type="text" id="user" class="w-full input-dark p-4 rounded-lg font-mono text-sm placeholder-zinc-700" placeholder="">
+                            </div>
+                            <div class="space-y-1.5 group">
+                                <label class="font-mono text-[10px] text-zinc-500 uppercase font-bold tracking-wider">Password</label>
+                                <input type="password" id="password" class="w-full input-dark p-4 rounded-lg font-mono text-sm placeholder-zinc-700" placeholder="">
+                            </div>
+                            
+                            <div class="pt-2">
+                                <div class="flex items-center gap-2 mb-4">
+                                    <input type="checkbox" id="remember" class="custom-checkbox">
+                                    <label for="remember" class="text-[10px] font-mono text-zinc-500 uppercase tracking-wider cursor-pointer select-none">Remember Me</label>
+                                </div>
+                                <button type="submit" id="submitBtn" class="btn-glitch w-full bg-brand-accent text-black font-pixel font-bold text-sm py-4 rounded-lg tracking-widest hover:bg-green-400 transition-colors uppercase flex items-center justify-center gap-2">
+                                    <span>Initialize Session</span><i class="fas fa-arrow-right"></i>
+                                </button>
+                            </div>
+
+                            <div class="flex justify-between items-center mt-6">
+                                <button type="button" onclick="toggleView('forgot')" class="text-[10px] font-mono text-zinc-600 hover:text-brand-accent uppercase tracking-wider">Forgot Credentials?</button>
+                                <div class="flex items-center gap-2"><span class="w-1.5 h-1.5 bg-zinc-700 rounded-full"></span><span class="text-[10px] font-mono text-zinc-700">Secure SSL</span></div>
+                            </div>
+                        </form>
+                    </div>
+
+                    <div id="view-forgot" class="hidden opacity-0 transition-all duration-300">
+                        <h2 class="text-xl font-pixel text-white mb-2">REQUEST PASSWORD RESET</h2>
+                        <p class="text-xs font-mono text-zinc-400 mb-6 leading-relaxed">Enter your account email address to receive instructions on resetting your password.</p>
+                        <form onsubmit="handleForgot(event)" class="space-y-5 relative z-20">
+                            <div class="space-y-1.5 group">
+                                <label class="font-mono text-[10px] text-zinc-500 uppercase font-bold tracking-wider">Email</label>
+                                <input type="email" id="email_reset" class="w-full input-dark p-4 rounded-lg font-mono text-sm placeholder-zinc-700" placeholder="">
+                            </div>
+                            <button type="submit" id="forgotBtn" class="btn-glitch w-full bg-brand-accent text-black font-pixel font-bold text-sm py-4 rounded-lg tracking-widest hover:bg-green-400 transition-colors uppercase flex items-center justify-center gap-2 mt-4">
+                                <span>Send Email</span><i class="fas fa-paper-plane"></i>
+                            </button>
+                            <div class="text-center mt-6">
+                                <button type="button" onclick="toggleView('login')" class="text-[10px] font-mono text-zinc-600 hover:text-brand-accent uppercase tracking-wider"><i class="fas fa-chevron-left mr-1"></i> Return to Login</button>
+                            </div>
+                        </form>
+                    </div>
+
+                    <div class="mt-auto pt-6 border-t border-white/5 text-center">
+                        <p class="font-mono text-[9px] text-zinc-600 uppercase tracking-widest">
+                            &copy; 2015 - 2025 <a href="https://pterodactyl.io/" target="_blank" class="hover:text-zinc-400 no-underline">Pterodactyl Software</a> &bull; SCT Theme by <span class="text-brand-accent">Pekly</span>
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="fixed bottom-0 right-0 z-50 mb-4 mr-4">
+            <div class="recaptcha-compact">
+                <div class="recaptcha-logo-container">
+                     <img src="https://images.seeklogo.com/logo-png/43/3/recaptcha-logo-png_seeklogo-436746.png" class="w-5 h-5 object-contain opacity-80" alt="reCAPTCHA">
+                </div>
+                <div class="recaptcha-text">
+                    <div class="mb-0.5 text-zinc-300">protected by <strong>reCAPTCHA</strong></div>
+                    <div class="text-[8px] leading-tight mb-0.5 text-zinc-500">reCAPTCHA is changing its terms of service.</div>
+                    <div class="text-zinc-600">
+                        <a href="https://www.google.com/intl/en/policies/privacy/" target="_blank" class="hover:text-brand-accent no-underline">Privacy</a> - <a href="https://policies.google.com/terms?hl=en" target="_blank" class="hover:text-brand-accent no-underline">Terms</a> - <a href="https://www.google.com/recaptcha/admin/migrate" target="_blank" class="hover:text-brand-accent font-bold no-underline">Take action.</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- PANEL CONTAINER -->
+    <div id="panel-container" class="view-container fade-enter-active">
+        <div class="flex h-screen overflow-hidden">
+            <!-- Main Sidebar (Z-50) -->
+            <div class="fixed left-0 top-0 h-full w-20 bg-[#0C0C0E] border-r border-white/5 flex flex-col z-50 shadow-2xl transition-all duration-300">
+                <div class="w-full h-20 flex items-center justify-center flex-shrink-0 relative">
+                    <div class="absolute bg-red-600 blur-[25px] opacity-20 w-10 h-10 rounded-full"></div>
+                    <img src="https://i.ibb.co/27YWBW6M/Picsart-25-12-04-05-19-25-855.png" class="w-10 h-10 object-contain relative z-10">
+                </div>
+                
+                <div class="flex-1 flex flex-col px-3 space-y-2 pt-4">
+                    <button onclick="router('#servers')" class="sidebar-link active" id="nav-servers" title="Servers">
+                        <i class="fas fa-layer-group text-lg"></i>
+                    </button>
+                    <button onclick="router('#account')" class="sidebar-link" id="nav-account" title="Account">
+                        <i class="fas fa-user text-lg"></i>
+                    </button>
+                    <button onclick="router('#admin/create')" class="sidebar-link text-brand-accent/80 hover:text-brand-accent hover:bg-brand-accent/10 hidden" id="nav-admin" title="Admin Settings">
+                        <i class="fas fa-cog text-lg"></i>
+                    </button>
+                </div>
+                <div class="mt-auto px-3 pb-6">
+                    <button onclick="handleLogout()" class="sidebar-link hover:bg-red-500/10 hover:text-red-500" title="Logout">
+                        <i class="fas fa-sign-out-alt text-lg"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Server Sidebar -->
+            <div id="server-sidebar" class="fixed left-20 top-0 h-full w-48 bg-[#0F0F11] border-r border-white/5 flex flex-col z-40 shadow-xl transition-transform duration-300 transform -translate-x-full pt-20 pb-6 hidden">
+                <div class="px-4 mb-4">
+                    <h3 class="text-xs font-bold text-zinc-500 uppercase tracking-wider mb-2">Management</h3>
+                    <div class="space-y-1" id="server-nav-links">
+                        <!-- JS Generated -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Main Content Area -->
+            <div id="main-content-area" class="flex-1 flex flex-col bg-brand-bg relative overflow-hidden ml-20 transition-all duration-300">
+                <div class="h-16 border-b border-white/5 bg-[#0C0C0E]/80 backdrop-blur flex items-center justify-between px-8 z-10 relative overflow-hidden shrink-0">
+                    <div class="flex items-center gap-4 relative z-10">
+                        <div class="flex flex-col">
+                            <h1 class="text-xl font-pixel text-white tracking-tight">MongolVibes</h1>
+                            <span class="text-[10px] font-mono text-zinc-500 uppercase tracking-widest" id="top-nav-breadcrumbs">MNVIBES NETWORK</span>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-6 relative z-10">
+                        <!-- Search Trigger -->
+                        <button onclick="toggleSearch()" class="text-zinc-500 hover:text-white transition-colors" title="Search (/)">
+                            <i class="fas fa-search"></i>
+                        </button>
+                        
+                        <div class="hidden md:flex items-center gap-4 text-xs font-mono text-zinc-500">
+                            <span><i class="fas fa-memory mr-2 text-zinc-600"></i>RAM: <span id="sys-load">...</span></span>
+                            <span><i class="fas fa-microchip mr-2 text-zinc-600"></i>CPU: <span id="cpu-load">...</span></span>
+                        </div>
+                        <div class="w-8 h-8 rounded-full bg-zinc-800 border border-white/10 overflow-hidden">
+                            <img id="user-avatar" src="" class="w-full h-full object-cover">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Dynamic Views -->
+                <div class="flex-1 overflow-y-auto p-8 relative scroll-smooth" id="router-view">
+                    <!-- Views injected here -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInWithEmailAndPassword, sendPasswordResetEmail, onAuthStateChanged, signOut, setPersistence, browserLocalPersistence, browserSessionPersistence } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, collection, addDoc, onSnapshot, query, orderBy, doc, updateDoc, getDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyCHtCnFnsaxhsAW0TdYL_ksYgaudaHnyZc",
+            authDomain: "mvgaming-67.firebaseapp.com",
+            projectId: "mvgaming-67",
+            storageBucket: "mvgaming-67.firebasestorage.app",
+            messagingSenderId: "459359534823",
+            appId: "1:459359534823:web:f4a9e9f3da568f9428ac42"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+
+        let localServers = [];
+        let activeServer = null;
+        let isAdmin = false;
+        let resourceInterval = null;
+        let sidebarTimeout; 
+        
+        const REALISTIC_LOGS_RAW = `
+[05:10:25] [ServerMain/INFO]: [bootstrap] Running Java 21 (OpenJDK 64-Bit Server VM)
+[05:10:25] [ServerMain/INFO]: [LeafConfig] Loading config...
+[05:10:25] [ServerMain/INFO]: [PluginInitializerManager] Initializing plugins...
+[05:10:33] [ServerMain/INFO]: [PluginInitializerManager] Initialized 105 plugins
+[05:10:37] [Server thread/INFO]: Starting minecraft server version 1.21.8
+[05:10:37] [Server thread/INFO]: Loading properties
+[05:10:37] [Server thread/INFO]: Default game type: SURVIVAL
+[05:10:37] [Server thread/INFO]: Generating keypair
+[05:10:37] [Server thread/INFO]: Starting Minecraft server on *:25565
+[05:10:52] [Server thread/INFO]: Preparing level "world"
+[05:10:53] [Server thread/INFO]: Preparing start region for dimension minecraft:overworld
+[05:10:54] [Server thread/INFO]: [Essentials] Enabling Essentials v2.22.0
+[05:10:56] [Server thread/INFO]: [DiscordSRV] Enabling DiscordSRV v1.30.2
+[05:10:56] [Server thread/INFO]: [WorldGuard] Enabling WorldGuard v7.0.14
+[05:11:03] [Server thread/INFO]: [EconomyShopGUI-Premium] Enabling EconomyShopGUI-Premium v5.29.1
+[05:11:18] [Server thread/INFO]: Done (54.218s)! For help, type "help"
+[05:11:19] [VoiceChatServerThread/INFO]: [voicechat] Voice chat server started at 0.0.0.0:24454
+`;
+
+        // --- Search Logic ---
+        window.toggleSearch = () => {
+            const modal = document.getElementById('search-modal');
+            const input = document.getElementById('global-search-input');
+            
+            if (modal.classList.contains('active')) {
+                modal.classList.remove('active');
+                input.value = '';
+            } else {
+                modal.classList.add('active');
+                // Small timeout to allow display:flex to apply before focusing
+                setTimeout(() => input.focus(), 50);
+            }
+        };
+
+        window.handleSearchInput = (query) => {
+            const resultsContainer = document.getElementById('search-results');
+            const emptyState = document.getElementById('search-empty-state');
+            
+            if (!query) {
+                resultsContainer.innerHTML = '';
+                resultsContainer.appendChild(emptyState);
+                emptyState.innerText = "Start typing to search...";
+                emptyState.style.display = 'block';
+                return;
+            }
+
+            const term = query.toLowerCase();
+            const matches = localServers.filter(s => 
+                s.name.toLowerCase().includes(term) || 
+                s.id.toLowerCase().includes(term) ||
+                (s.ip && s.ip.toLowerCase().includes(term))
+            );
+
+            if (matches.length === 0) {
+                resultsContainer.innerHTML = '';
+                resultsContainer.appendChild(emptyState);
+                emptyState.innerText = "No servers found.";
+                emptyState.style.display = 'block';
+            } else {
+                emptyState.style.display = 'none';
+                resultsContainer.innerHTML = matches.map(s => `
+                    <div onclick="router('#server/${s.id}'); toggleSearch();" class="flex items-center gap-4 p-4 hover:bg-white/5 cursor-pointer border-b border-white/5 transition-colors group">
+                        <div class="w-2 h-10 bg-brand-accent rounded-full shadow-[0_0_10px_#22c55e]"></div>
+                        <div class="flex-1">
+                            <h3 class="text-white font-bold group-hover:text-brand-accent transition-colors">${s.name}</h3>
+                            <p class="text-xs text-zinc-500 font-mono">${s.ip || 'mnvibes.org'}</p>
+                        </div>
+                        <div class="text-right">
+                             <div class="text-[10px] text-zinc-600 font-mono uppercase tracking-widest mb-1">Allocation</div>
+                             <div class="text-xs text-zinc-400 font-mono">${s.ip || 'mnvibes.org:25565'}</div>
+                        </div>
+                    </div>
+                `).join('');
+            }
+        };
+
+        // Hotkey for Search
+        document.addEventListener('keydown', (e) => {
+            if (e.key === '/' && !document.querySelector('input:focus')) {
+                e.preventDefault();
+                toggleSearch();
+            }
+            if (e.key === 'Escape') {
+                const modal = document.getElementById('search-modal');
+                if (modal.classList.contains('active')) toggleSearch();
+            }
+        });
+
+        // --- Helper Functions ---
+        function addLog(msg) {
+            const output = document.getElementById('console-output');
+            if (!output) return;
+            const div = document.createElement('div');
+            div.className = 'console-line';
+            
+            // Basic Coloring
+            if(msg.includes('INFO')) div.classList.add('text-zinc-300');
+            else if(msg.includes('WARN')) div.classList.add('text-yellow-400');
+            else if(msg.includes('ERROR')) div.classList.add('text-red-400');
+            else div.classList.add('text-zinc-500');
+
+            div.innerHTML = msg;
+            output.appendChild(div);
+            output.scrollTop = output.scrollHeight;
+        }
+
+        function startFakeLogs() {
+            const output = document.getElementById('console-output');
+            if(!output) return;
+            output.innerHTML = '';
+            
+            const logs = REALISTIC_LOGS_RAW.trim().split('\n');
+            logs.forEach(l => addLog(l));
+        }
+
+        function addGraphBar(container, color) {
+            const h = Math.floor(Math.random() * 80) + 10;
+            const bar = document.createElement('div');
+            bar.className = `w-1.5 rounded-t mx-[1px] ${color} opacity-60`;
+            bar.style.height = `${h}%`;
+            bar.style.transition = 'height 0.3s ease';
+            container.appendChild(bar);
+            if (container.children.length > 30) container.removeChild(container.firstChild);
+        }
+
+        function startResourceMonitor() {
+            if (resourceInterval) return;
+            const memGraph = document.getElementById('mem-graph');
+            const cpuGraph = document.getElementById('cpu-graph');
+            if(!memGraph || !activeServer) return;
+
+            memGraph.innerHTML = '';
+            cpuGraph.innerHTML = '';
+
+            for(let i=0; i<20; i++) {
+                addGraphBar(memGraph, 'bg-brand-accent');
+                addGraphBar(cpuGraph, 'bg-blue-500');
+            }
+
+            resourceInterval = setInterval(() => {
+                addGraphBar(memGraph, 'bg-brand-accent');
+                addGraphBar(cpuGraph, 'bg-blue-500');
+                
+                const currentMem = Math.floor(Math.random() * (activeServer.ramLimit || 2048));
+                const currentCpu = Math.floor(Math.random() * (activeServer.cpuLimit || 100));
+                
+                const memText = document.getElementById('stat-mem-text');
+                const cpuText = document.getElementById('stat-cpu-text');
+                if(memText) memText.innerText = `${currentMem} / ${activeServer.ramLimit || 2048} MB`;
+                if(cpuText) cpuText.innerText = `${currentCpu} / ${activeServer.cpuLimit || 100} %`;
+            }, 1000);
+        }
+
+        function stopResourceMonitor() {
+            if (resourceInterval) { clearInterval(resourceInterval); resourceInterval = null; }
+        }
+
+        function renderFakeFiles() {
+            const container = document.getElementById('file-list-container');
+            if(!container) return;
+            const files = [
+                { name: 'plugins', size: '-', icon: 'fa-folder text-yellow-500', type: 'dir' },
+                { name: 'world', size: '-', icon: 'fa-folder text-yellow-500', type: 'dir' },
+                { name: 'server.properties', size: '2 KB', icon: 'fa-file-code text-blue-400', type: 'file' }
+            ];
+            
+            // Header Row
+            let html = `
+               <div class="flex items-center px-4 py-2 border-b border-white/5 text-[10px] font-bold text-zinc-500 uppercase tracking-wider">
+                    <div class="w-8 flex justify-center"><input type="checkbox" class="custom-checkbox"></div>
+                    <div class="flex-1">Name</div>
+                    <div class="w-24 text-right">Size</div>
+                    <div class="w-32 text-right">Modified</div>
+               </div>
+            `;
+            
+            html += files.map(f => `
+                <div class="file-row cursor-pointer text-xs font-mono text-zinc-400 hover:bg-white/5 border-b border-white/5 flex items-center p-3 transition-colors">
+                    <div class="w-8 flex justify-center"><input type="checkbox" class="custom-checkbox"></div>
+                    <div class="flex-1 flex items-center gap-3"><i class="fas ${f.icon} w-4 text-center"></i> <span class="${f.type === 'dir' ? 'text-zinc-200 font-bold' : 'text-zinc-300'}">${f.name}</span></div>
+                    <div class="w-24 text-right opacity-70">${f.size}</div>
+                    <div class="w-32 text-right opacity-70">Just now</div>
+                </div>
+            `).join('');
+            
+            container.innerHTML = html;
+        }
+
+        function initConsoleInput() {
+            const input = document.getElementById('console-input');
+            if(input) {
+                input.addEventListener('keypress', (e) => {
+                    if (e.key === 'Enter') {
+                        const cmd = input.value;
+                        if(cmd) {
+                            addLog(`> ${cmd}`);
+                            input.value = '';
+                        }
+                    }
+                });
+            }
+        }
+        
+        window.handleDeleteServer = async () => {
+             if(!activeServer) return;
+             if(!confirm(`Are you sure you want to delete ${activeServer.name}? This action cannot be undone.`)) return;
+             
+             try {
+                 await deleteDoc(doc(db, "servers", activeServer.id));
+                 showToast("Server deleted successfully.", "success");
+                 router('#servers');
+             } catch (e) {
+                 console.error(e);
+                 showToast("Failed to delete server.", "error");
+             }
+        };
+        
+        window.copyIP = (ip) => {
+             navigator.clipboard.writeText(ip);
+             showToast("IP copied to clipboard!", "success");
+        };
+
+        // --- Templates ---
+        const templates = {
+            list: () => `
+                <div class="max-w-7xl mx-auto">
+                    <div class="flex justify-between items-center mb-8">
+                        <h2 class="text-lg font-mono text-zinc-400">Servers</h2>
+                        <div class="flex items-center gap-2 text-xs font-mono text-zinc-600 bg-zinc-900/50 px-3 py-1.5 rounded border border-white/5">
+                            <span class="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span> ULAANBAATAR
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6" id="server-list-render">
+                        <div class="col-span-full text-center py-12 text-zinc-600"><i class="fas fa-circle-notch fa-spin text-2xl"></i></div>
+                    </div>
+                </div>
+            `,
+            account: () => `
+                <div class="max-w-7xl mx-auto">
+                    <div class="flex border-b border-white/5 mb-8 overflow-x-auto">
+                        <button class="px-6 py-3 text-xs font-bold text-white border-b-2 border-brand-accent uppercase tracking-wider">Account</button>
+                        <button class="px-6 py-3 text-xs font-bold text-zinc-500 hover:text-zinc-300 uppercase tracking-wider transition-colors">API Credentials</button>
+                        <button class="px-6 py-3 text-xs font-bold text-zinc-500 hover:text-zinc-300 uppercase tracking-wider transition-colors">SSH Keys</button>
+                        <button class="px-6 py-3 text-xs font-bold text-zinc-500 hover:text-zinc-300 uppercase tracking-wider transition-colors">Activity</button>
+                        
+                        <div class="ml-auto flex items-center px-4">
+                             <div class="flex items-center gap-2">
+                                <span class="text-[10px] text-zinc-600 uppercase font-bold">Admin Mode</span>
+                                <button onclick="toggleAdminMode()" class="w-8 h-4 rounded-full transition-colors relative ${isAdmin ? 'bg-brand-accent' : 'bg-zinc-800'}">
+                                    <div class="w-2 h-2 bg-white rounded-full absolute top-1 transition-all ${isAdmin ? 'left-5' : 'left-1'}"></div>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                        <div class="bg-zinc-900/30 border border-white/5 rounded-lg p-6 flex flex-col">
+                            <h3 class="text-zinc-300 font-bold mb-6 text-sm">Update Password</h3>
+                            <form onsubmit="event.preventDefault(); showToast('Password updated!', 'success');" class="space-y-4 flex-1 flex flex-col">
+                                <div class="space-y-1">
+                                    <label class="text-[10px] font-bold text-zinc-500 uppercase">Current Password</label>
+                                    <input type="password" class="w-full bg-black/40 border border-white/10 rounded p-2.5 text-sm text-white focus:border-brand-accent outline-none transition-colors">
+                                </div>
+                                <div class="space-y-1">
+                                    <label class="text-[10px] font-bold text-zinc-500 uppercase">New Password</label>
+                                    <input type="password" class="w-full bg-black/40 border border-white/10 rounded p-2.5 text-sm text-white focus:border-brand-accent outline-none transition-colors">
+                                </div>
+                                <div class="space-y-1">
+                                    <label class="text-[10px] font-bold text-zinc-500 uppercase">Confirm New Password</label>
+                                    <input type="password" class="w-full bg-black/40 border border-white/10 rounded p-2.5 text-sm text-white focus:border-brand-accent outline-none transition-colors">
+                                </div>
+                                <p class="text-[10px] text-zinc-600">Your new password should be at least 8 characters in length and unique to this website.</p>
+                                <div class="pt-4 mt-auto">
+                                    <button class="bg-brand-accent text-black font-bold text-xs px-4 py-2 rounded hover:bg-green-400 transition-colors uppercase">Update Password</button>
+                                </div>
+                            </form>
+                        </div>
+
+                        <div class="bg-zinc-900/30 border border-white/5 rounded-lg p-6 flex flex-col">
+                            <h3 class="text-zinc-300 font-bold mb-6 text-sm">Update Email Address</h3>
+                            <form onsubmit="event.preventDefault(); showToast('Email updated!', 'success');" class="space-y-4 flex-1 flex flex-col">
+                                <div class="space-y-1">
+                                    <label class="text-[10px] font-bold text-zinc-500 uppercase">Email</label>
+                                    <input type="email" value="${auth.currentUser?.email || 'user@example.com'}" class="w-full bg-black/40 border border-white/10 rounded p-2.5 text-sm text-white focus:border-brand-accent outline-none transition-colors">
+                                </div>
+                                <div class="space-y-1">
+                                    <label class="text-[10px] font-bold text-zinc-500 uppercase">Confirm Password</label>
+                                    <input type="password" class="w-full bg-black/40 border border-white/10 rounded p-2.5 text-sm text-white focus:border-brand-accent outline-none transition-colors">
+                                </div>
+                                <div class="pt-4 mt-auto">
+                                    <button class="bg-brand-accent text-black font-bold text-xs px-4 py-2 rounded hover:bg-green-400 transition-colors uppercase">Update Email</button>
+                                </div>
+                            </form>
+                        </div>
+
+                        <div class="bg-zinc-900/30 border border-white/5 rounded-lg p-6 flex flex-col">
+                            <h3 class="text-zinc-300 font-bold mb-6 text-sm">Two-Step Verification</h3>
+                            <div class="flex-1 flex flex-col">
+                                <div class="bg-black/40 border border-white/5 rounded p-4 mb-4">
+                                    <i class="fas fa-shield-alt text-brand-accent text-2xl mb-2"></i>
+                                    <p class="text-xs text-zinc-400 leading-relaxed">
+                                        You do not currently have two-step verification enabled on your account. Click the button below to begin configuring it.
+                                    </p>
+                                </div>
+                                <div class="mt-auto">
+                                    <button class="bg-brand-accent text-black font-bold text-xs px-4 py-2 rounded hover:bg-green-400 transition-colors uppercase">Enable Two-Step</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `,
+            create: () => `
+                <div class="max-w-4xl mx-auto">
+                    <div class="flex items-center gap-4 mb-8 border-b border-white/5 pb-6">
+                        <button onclick="router('#servers')" class="text-zinc-500 hover:text-white"><i class="fas fa-arrow-left"></i></button>
+                        <h2 class="text-lg font-mono text-zinc-400">Deploy Server</h2>
+                    </div>
+                    <div class="bg-zinc-900/50 border border-white/5 rounded-lg p-8 relative overflow-hidden">
+                        <div class="scanline"></div>
+                        <form onsubmit="handleCreateServer(event)" class="space-y-6 relative z-10">
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div class="space-y-2">
+                                    <label class="text-xs font-bold text-zinc-500 uppercase tracking-wider">Server Name</label>
+                                    <input type="text" id="new-server-name" class="w-full bg-black/40 border border-white/10 rounded p-3 text-sm text-white focus:border-brand-accent focus:outline-none placeholder-zinc-700" placeholder="Survival Season X" required>
+                                </div>
+                                <div class="space-y-2">
+                                    <label class="text-xs font-bold text-zinc-500 uppercase tracking-wider">Node</label>
+                                    <select class="w-full bg-black/40 border border-white/10 rounded p-3 text-sm text-zinc-400 focus:border-brand-accent outline-none">
+                                        <option>Ulaanbaatar-01 (Premium)</option>
+                                        <option>Ulaanbaatar-02 (Standard)</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="grid grid-cols-3 gap-6 pt-4 border-t border-white/5">
+                                <div class="space-y-2">
+                                    <label class="text-xs font-bold text-zinc-500 uppercase tracking-wider">RAM Limit (MB)</label>
+                                    <input type="number" id="res-ram" value="2048" class="w-full bg-black/40 border border-white/10 rounded p-3 text-sm text-white focus:border-brand-accent outline-none font-mono">
+                                </div>
+                                <div class="space-y-2">
+                                    <label class="text-xs font-bold text-zinc-500 uppercase tracking-wider">CPU Limit (%)</label>
+                                    <input type="number" id="res-cpu" value="100" class="w-full bg-black/40 border border-white/10 rounded p-3 text-sm text-white focus:border-brand-accent outline-none font-mono">
+                                </div>
+                                <div class="space-y-2">
+                                    <label class="text-xs font-bold text-zinc-500 uppercase tracking-wider">Disk Limit (MB)</label>
+                                    <input type="number" id="res-disk" value="5120" class="w-full bg-black/40 border border-white/10 rounded p-3 text-sm text-white focus:border-brand-accent outline-none font-mono">
+                                </div>
+                            </div>
+                            <div class="pt-4 flex items-center justify-between">
+                                <div class="text-xs text-zinc-500">Resource Pool: <span class="text-green-500">Available</span></div>
+                                <button type="submit" id="createBtn" class="bg-brand-accent text-black font-bold text-sm px-6 py-3 rounded hover:bg-green-400 transition-colors uppercase flex items-center gap-2">
+                                    <span>Deploy</span> <i class="fas fa-rocket"></i>
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            `,
+            console: () => `
+                <div class="flex flex-col h-full">
+                    <div class="flex items-center justify-between mb-4 border-b border-white/5 pb-4 shrink-0">
+                        <div class="flex items-center gap-4">
+                            <div class="relative">
+                                <span class="w-2 h-2 bg-green-500 rounded-full absolute -top-1 -right-1 animate-pulse"></span>
+                                <h2 class="text-lg font-mono text-white">${activeServer.name}</h2>
+                            </div>
+                            <span class="text-[10px] px-2 py-0.5 rounded bg-zinc-800 text-zinc-400 font-mono">${activeServer.id.substring(0,6)}</span>
+                        </div>
+                        <div class="flex gap-2">
+                            <button onclick="handlePower('start')" class="bg-green-500/10 text-green-500 px-3 py-1.5 rounded text-xs font-bold border border-green-500/20 hover:bg-green-500 hover:text-white uppercase">Start</button>
+                            <button onclick="handlePower('restart')" class="bg-yellow-500/10 text-yellow-500 px-3 py-1.5 rounded text-xs font-bold border border-yellow-500/20 hover:bg-yellow-500 hover:text-black uppercase">Restart</button>
+                            <button onclick="handlePower('stop')" class="bg-red-500/10 text-red-500 px-3 py-1.5 rounded text-xs font-bold border border-red-500/20 hover:bg-red-500 hover:text-white uppercase">Stop</button>
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-2 gap-4 mb-4 h-24 shrink-0">
+                        <div class="bg-black/30 border border-white/5 rounded p-3 flex flex-col justify-end relative overflow-hidden">
+                            <div class="absolute top-2 left-3 flex justify-between w-[90%]">
+                                <span class="text-[10px] text-zinc-500 uppercase font-bold">Memory</span>
+                                <span class="text-[10px] text-zinc-300 font-mono" id="stat-mem-text">0 / ${activeServer.ramLimit || 2048} MB</span>
+                            </div>
+                            <div class="flex items-end gap-1 h-12" id="mem-graph"></div>
+                        </div>
+                        <div class="bg-black/30 border border-white/5 rounded p-3 flex flex-col justify-end relative overflow-hidden">
+                            <div class="absolute top-2 left-3 flex justify-between w-[90%]">
+                                <span class="text-[10px] text-zinc-500 uppercase font-bold">CPU Load</span>
+                                <span class="text-[10px] text-zinc-300 font-mono" id="stat-cpu-text">0 / ${activeServer.cpuLimit || 100}%</span>
+                            </div>
+                            <div class="flex items-end gap-1 h-12" id="cpu-graph"></div>
+                        </div>
+                    </div>
+                    <div class="flex-1 bg-[#0C0C0E] border border-white/10 rounded-lg p-4 overflow-hidden flex flex-col font-mono text-xs relative">
+                        <div class="flex-1 overflow-y-auto space-y-0.5 text-zinc-400 custom-scrollbar pb-2" id="console-output"></div>
+                        <div class="mt-2 flex gap-2 border-t border-white/10 pt-2 shrink-0">
+                            <div class="text-brand-accent py-2">></div>
+                            <input type="text" id="console-input" class="bg-transparent border-none text-white w-full focus:outline-none font-mono placeholder-zinc-700" placeholder="Type a command...">
+                        </div>
+                    </div>
+                </div>
+            `,
+            files: () => `
+                <div class="flex flex-col h-full bg-zinc-900/30 border border-white/5 rounded-lg overflow-hidden">
+                    <div class="bg-black/40 px-4 py-3 flex items-center justify-between border-b border-white/5 shrink-0">
+                        <div class="flex gap-4 items-center">
+                            <input type="checkbox" class="custom-checkbox">
+                            <span class="text-xs text-zinc-400 bg-white/5 px-2 py-1 rounded">/home/container</span>
+                        </div>
+                        <div class="flex gap-2">
+                            <button class="bg-brand-accent/10 border border-brand-accent/20 text-brand-accent text-xs font-bold px-3 py-1.5 rounded hover:bg-brand-accent hover:text-black">New Directory</button>
+                            <button class="bg-zinc-800 border border-zinc-700 text-zinc-300 text-xs font-bold px-3 py-1.5 rounded hover:bg-zinc-700">New File</button>
+                        </div>
+                    </div>
+                    <div class="overflow-y-auto flex-1" id="file-list-container"></div>
+                    <div class="bg-black/40 px-4 py-2 border-t border-white/5 flex justify-between items-center text-[10px] text-zinc-500 font-mono">
+                         <div class="flex gap-4">
+                             <label class="flex items-center gap-2 cursor-pointer hover:text-white"><input type="checkbox" class="custom-checkbox"> Mass Actions</label>
+                         </div>
+                         <div>3 Directories, 1 File</div>
+                    </div>
+                </div>
+            `,
+            startup: () => `
+                <div class="flex flex-col h-full overflow-y-auto">
+                    <div class="grid grid-cols-1 gap-6">
+                        <div class="bg-zinc-900/30 border border-white/5 rounded-lg p-6">
+                            <h3 class="text-zinc-300 font-bold mb-1 text-sm uppercase tracking-wide">Startup Configuration</h3>
+                            <div class="space-y-2 mb-6">
+                                <label class="block text-xs font-bold text-zinc-500 uppercase">Startup Command</label>
+                                <div class="bg-black/50 p-3 rounded border border-white/10 font-mono text-xs text-zinc-300">
+                                    java -Xms128M -Xmx{{SERVER_MEMORY}}M -jar {{SERVER_JARFILE}}
+                                </div>
+                            </div>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div class="space-y-2">
+                                    <label class="block text-xs font-bold text-zinc-500 uppercase">Docker Image</label>
+                                    <select class="w-full bg-black/30 border border-white/10 rounded p-2.5 text-sm text-white focus:border-brand-accent outline-none">
+                                        <option>ghcr.io/pterodactyl/yolks:java_17</option>
+                                    </select>
+                                </div>
+                                <div class="space-y-2">
+                                    <label class="block text-xs font-bold text-zinc-500 uppercase">Server Jar File</label>
+                                    <input type="text" value="server.jar" class="w-full bg-black/30 border border-white/10 rounded p-2.5 text-sm text-white focus:border-brand-accent outline-none font-mono">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `,
+            settings: () => `
+                <div class="flex flex-col h-full overflow-y-auto">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div class="bg-zinc-900/30 border border-white/5 rounded-lg p-6">
+                            <h3 class="text-white font-bold mb-4 text-sm uppercase tracking-wide">SFTP Details</h3>
+                            <div class="space-y-4">
+                                <div>
+                                    <label class="block text-xs font-bold text-zinc-500 uppercase mb-1">Server Address</label>
+                                    <input type="text" value="sftp://mnvibes.org:2022" readonly class="w-full bg-black/30 border border-white/10 rounded p-2 text-sm text-zinc-400 cursor-copy" onclick="copyIP(this.value)">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="bg-red-900/10 border border-red-500/20 rounded-lg p-6">
+                            <h3 class="text-red-500 font-bold mb-4 text-sm uppercase tracking-wide">Danger Zone</h3>
+                            <button onclick="handlePower('reinstall')" class="bg-red-600/10 text-red-500 border border-red-600/50 w-full py-2.5 rounded text-xs font-bold hover:bg-red-600 hover:text-white transition-all uppercase mb-2">Reinstall Server</button>
+                             <button onclick="handleDeleteServer()" class="bg-red-600 text-white border border-red-500 w-full py-2.5 rounded text-xs font-bold hover:bg-red-700 transition-all uppercase">Delete Server</button>
+                        </div>
+                    </div>
+                </div>
+            `,
+            databases: () => `
+                <div class="flex flex-col h-full bg-zinc-900/30 border border-white/5 rounded-lg overflow-hidden">
+                    <div class="bg-black/40 px-6 py-4 border-b border-white/5 flex justify-between items-center">
+                        <h3 class="text-zinc-300 text-sm font-bold uppercase">Databases</h3>
+                        <button class="bg-brand-accent text-black text-xs font-bold px-4 py-2 rounded hover:bg-green-400">New Database</button>
+                    </div>
+                    <div class="p-6 grid grid-cols-1 gap-4">
+                         <div class="bg-black/20 border border-white/5 rounded p-4 flex items-center justify-between">
+                            <div>
+                                <div class="text-white font-bold text-sm mb-1">s1_db1</div>
+                                <div class="text-zinc-500 text-xs font-mono">127.0.0.1:3306</div>
+                            </div>
+                            <div class="flex gap-2">
+                                <button class="text-zinc-400 hover:text-white p-2"><i class="fas fa-eye"></i></button>
+                                <button class="text-red-500 hover:text-red-400 p-2"><i class="fas fa-trash"></i></button>
+                            </div>
+                         </div>
+                    </div>
+                </div>
+            `,
+            schedules: () => `
+                 <div class="flex flex-col h-full bg-zinc-900/30 border border-white/5 rounded-lg overflow-hidden">
+                    <div class="bg-black/40 px-6 py-4 border-b border-white/5 flex justify-between items-center">
+                        <h3 class="text-zinc-300 text-sm font-bold uppercase">Schedules</h3>
+                        <button class="bg-zinc-700 text-white text-xs font-bold px-4 py-2 rounded hover:bg-zinc-600">Create Schedule</button>
+                    </div>
+                    <div class="p-12 text-center text-zinc-500 text-sm font-mono">
+                        There are no schedules configured for this server.
+                    </div>
+                </div>
+            `,
+             users: () => `
+                 <div class="flex flex-col h-full bg-zinc-900/30 border border-white/5 rounded-lg overflow-hidden">
+                    <div class="bg-black/40 px-6 py-4 border-b border-white/5 flex justify-between items-center">
+                        <h3 class="text-zinc-300 text-sm font-bold uppercase">Subusers</h3>
+                        <button class="bg-brand-accent text-black text-xs font-bold px-4 py-2 rounded hover:bg-green-400">New User</button>
+                    </div>
+                    <div class="p-12 text-center text-zinc-500 text-sm font-mono">
+                        No subusers have been assigned to this server.
+                    </div>
+                </div>
+            `,
+            backups: () => `
+                 <div class="flex flex-col h-full bg-zinc-900/30 border border-white/5 rounded-lg overflow-hidden">
+                    <div class="bg-black/40 px-6 py-4 border-b border-white/5 flex justify-between items-center">
+                        <h3 class="text-zinc-300 text-sm font-bold uppercase">Backups</h3>
+                        <button class="bg-zinc-700 text-white text-xs font-bold px-4 py-2 rounded hover:bg-zinc-600">Create Backup</button>
+                    </div>
+                     <div class="p-6 grid grid-cols-1 gap-4">
+                         <div class="bg-black/20 border border-white/5 rounded p-4 flex items-center justify-between border-l-4 border-l-green-500">
+                            <div>
+                                <div class="text-white font-bold text-sm mb-1">Daily Backup</div>
+                                <div class="text-zinc-500 text-xs font-mono">248MB • 2 hours ago</div>
+                            </div>
+                            <div class="flex gap-2">
+                                <button class="text-zinc-400 hover:text-white p-2"><i class="fas fa-download"></i></button>
+                                <button class="text-red-500 hover:text-red-400 p-2"><i class="fas fa-trash"></i></button>
+                            </div>
+                         </div>
+                    </div>
+                </div>
+            `,
+            network: () => `
+                 <div class="flex flex-col h-full bg-zinc-900/30 border border-white/5 rounded-lg overflow-hidden">
+                    <div class="bg-black/40 px-6 py-4 border-b border-white/5 flex justify-between items-center">
+                        <h3 class="text-zinc-300 text-sm font-bold uppercase">Allocation</h3>
+                        <button class="bg-brand-accent text-black text-xs font-bold px-4 py-2 rounded hover:bg-green-400">Create Allocation</button>
+                    </div>
+                     <div class="p-6 grid grid-cols-1 gap-4">
+                         <div class="bg-black/20 border border-white/5 rounded p-4 flex items-center justify-between">
+                            <div class="flex items-center gap-4">
+                                <span class="bg-green-500/10 text-green-500 text-[10px] font-bold px-2 py-1 rounded border border-green-500/20">PRIMARY</span>
+                                <div class="text-zinc-300 font-mono text-sm">mnvibes.org:25565</div>
+                            </div>
+                            <div class="text-zinc-500 text-xs font-mono">Notes: None</div>
+                         </div>
+                    </div>
+                </div>
+            `,
+             activity: () => `
+                 <div class="flex flex-col h-full bg-zinc-900/30 border border-white/5 rounded-lg overflow-hidden">
+                    <div class="bg-black/40 px-6 py-4 border-b border-white/5">
+                        <h3 class="text-zinc-300 text-sm font-bold uppercase">Activity Log</h3>
+                    </div>
+                     <div class="p-4 space-y-2">
+                        <div class="flex items-center gap-4 text-xs font-mono text-zinc-400 p-2 hover:bg-white/5 rounded">
+                            <span class="text-zinc-600">Just now</span>
+                            <span class="text-brand-accent">root</span>
+                            <span>Console: /op me</span>
+                        </div>
+                        <div class="flex items-center gap-4 text-xs font-mono text-zinc-400 p-2 hover:bg-white/5 rounded">
+                            <span class="text-zinc-600">2 mins ago</span>
+                            <span class="text-brand-accent">root</span>
+                            <span>Power: Restart Server</span>
+                        </div>
+                     </div>
+                </div>
+            `
+        };
+
+        // --- Logic ---
+        window.router = (hash) => {
+            window.location.hash = hash;
+            handleHash();
+        };
+
+        const handleHash = () => {
+            const hash = window.location.hash.replace('#', '');
+            const container = document.getElementById('router-view');
+            const serverSidebar = document.getElementById('server-sidebar');
+            const mainContent = document.getElementById('main-content-area');
+            const navAdmin = document.getElementById('nav-admin');
+            const topNavBreadcrumbs = document.getElementById('top-nav-breadcrumbs');
+
+            // --- Robust Sidebar Handling ---
+            if (sidebarTimeout) clearTimeout(sidebarTimeout);
+
+            stopResourceMonitor();
+            document.querySelectorAll('.sidebar-link').forEach(el => el.classList.remove('active'));
+            
+            if (hash.startsWith('server/')) {
+                 // Show Server Sidebar
+                 serverSidebar.classList.remove('hidden');
+                 requestAnimationFrame(() => serverSidebar.classList.remove('-translate-x-full'));
+                 mainContent.style.marginLeft = '272px';
+            } else {
+                 // Hide Server Sidebar
+                 serverSidebar.classList.add('-translate-x-full');
+                 mainContent.style.marginLeft = '80px';
+                 sidebarTimeout = setTimeout(() => {
+                     serverSidebar.classList.add('hidden');
+                 }, 300);
+            }
+
+            // Route Logic
+            if (hash === 'servers' || hash === '') {
+                container.innerHTML = templates.list();
+                document.getElementById('nav-servers').classList.add('active');
+                if(topNavBreadcrumbs) topNavBreadcrumbs.innerHTML = 'MNVIBES NETWORK';
+                renderServerList();
+            } else if (hash === 'account') {
+                container.innerHTML = templates.account();
+                document.getElementById('nav-account').classList.add('active');
+                if(topNavBreadcrumbs) topNavBreadcrumbs.innerHTML = 'System Access Point > Account';
+            } else if (hash === 'admin/create') {
+                if(!isAdmin) { router('#servers'); return; }
+                container.innerHTML = templates.create();
+                navAdmin.classList.add('active');
+                if(topNavBreadcrumbs) topNavBreadcrumbs.innerHTML = 'System Access Point > Admin';
+            } else if (hash.startsWith('server/')) {
+                const parts = hash.split('/');
+                const serverId = parts[1];
+                const tab = parts[2] || 'console';
+                
+                // Active Server Search & Wait Logic
+                activeServer = localServers.find(s => s.id === serverId);
+                
+                if(!activeServer) { 
+                    container.innerHTML = `<div class="text-center text-zinc-500 mt-10"><i class="fas fa-circle-notch fa-spin"></i> Loading server context...</div>`;
+                    return; 
+                }
+                
+                if(topNavBreadcrumbs) topNavBreadcrumbs.innerHTML = `System Access Point > ${activeServer.name}`;
+
+                // Render Tab links (With Grayed Out Buttons)
+                const links = `
+                    <button onclick="router('#server/${serverId}/console')" class="server-sidebar-link w-full text-left ${tab==='console'?'active':''}"><i class="fas fa-terminal"></i> Console</button>
+                    <button onclick="router('#server/${serverId}/files')" class="server-sidebar-link w-full text-left ${tab==='files'?'active':''}"><i class="fas fa-folder"></i> Files</button>
+                    
+                    <button onclick="router('#server/${serverId}/databases')" class="server-sidebar-link w-full text-left ${tab==='databases'?'active':''}"><i class="fas fa-database"></i> Databases</button>
+                    <button onclick="router('#server/${serverId}/schedules')" class="server-sidebar-link w-full text-left ${tab==='schedules'?'active':''}"><i class="fas fa-calendar-alt"></i> Schedules</button>
+                    <button onclick="router('#server/${serverId}/users')" class="server-sidebar-link w-full text-left ${tab==='users'?'active':''}"><i class="fas fa-users"></i> Users</button>
+                    <button onclick="router('#server/${serverId}/backups')" class="server-sidebar-link w-full text-left ${tab==='backups'?'active':''}"><i class="fas fa-archive"></i> Backups</button>
+                    <button onclick="router('#server/${serverId}/network')" class="server-sidebar-link w-full text-left ${tab==='network'?'active':''}"><i class="fas fa-network-wired"></i> Network</button>
+                    
+                    <button onclick="router('#server/${serverId}/startup')" class="server-sidebar-link w-full text-left ${tab==='startup'?'active':''}"><i class="fas fa-play"></i> Startup</button>
+                    <button onclick="router('#server/${serverId}/settings')" class="server-sidebar-link w-full text-left ${tab==='settings'?'active':''}"><i class="fas fa-cogs"></i> Settings</button>
+                    
+                    <div class="h-px bg-white/5 my-2 mx-2"></div>
+                    <button onclick="router('#server/${serverId}/activity')" class="server-sidebar-link w-full text-left ${tab==='activity'?'active':''}"><i class="fas fa-history"></i> Activity</button>
+                `;
+                document.getElementById('server-nav-links').innerHTML = links;
+
+                // Render Content
+                if (tab === 'console') {
+                    container.innerHTML = templates.console();
+                    startResourceMonitor();
+                    startFakeLogs();
+                    initConsoleInput();
+                } else if (tab === 'files') {
+                    container.innerHTML = templates.files();
+                    renderFakeFiles();
+                } else if (templates[tab]) {
+                    container.innerHTML = templates[tab]();
+                } else {
+                    container.innerHTML = `<div class="p-10 text-center text-zinc-500">Module '${tab}' loaded.</div>`;
+                }
+            }
+        };
+
+        window.toggleAdminMode = () => {
+            isAdmin = !isAdmin;
+            const btn = document.getElementById('nav-admin');
+            if(isAdmin) btn.classList.remove('hidden');
+            else btn.classList.add('hidden');
+            router('#account'); // Refresh view
+        };
+
+        window.handleCreateServer = async (e) => {
+            e.preventDefault();
+            const btn = document.getElementById('createBtn');
+            const name = document.getElementById('new-server-name').value;
+            const ram = document.getElementById('res-ram').value;
+            const cpu = document.getElementById('res-cpu').value;
+            const disk = document.getElementById('res-disk').value;
+
+            btn.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> Deploying...';
+            btn.disabled = true;
+
+            try {
+                await addDoc(collection(db, "servers"), {
+                    name: name,
+                    ip: "mnvibes.org:25565",
+                    status: "RUNNING",
+                    ramLimit: ram,
+                    cpuLimit: cpu,
+                    diskLimit: disk,
+                    createdAt: new Date().toISOString(),
+                    ownerId: auth.currentUser.uid
+                });
+                showToast(`Server deployed!`, 'success');
+                router('#servers');
+            } catch (error) {
+                console.error(error);
+                showToast("Error creating server", 'error');
+                btn.disabled = false;
+            }
+        };
+
+        function renderServerList() {
+            const list = document.getElementById('server-list-render');
+            if(!list) return;
+            
+            const q = query(collection(db, "servers"), orderBy("createdAt", "desc"));
+            onSnapshot(q, (snapshot) => {
+                localServers = [];
+                snapshot.forEach((doc) => { localServers.push({ id: doc.id, ...doc.data() }); });
+                
+                if(localServers.length === 0) {
+                    list.innerHTML = `<div class="col-span-full text-center text-zinc-600">No servers found.</div>`;
+                    return;
+                }
+
+                list.innerHTML = localServers.map(s => `
+                    <div class="server-card rounded-lg p-5 group cursor-pointer relative overflow-hidden" onclick="router('#server/${s.id}')">
+                        <div class="flex justify-between items-start mb-6">
+                            <div class="flex items-center gap-4">
+                                <div class="w-2 h-12 bg-brand-accent shadow-[0_0_10px_#22c55e] rounded-full"></div>
+                                <div>
+                                    <h3 class="text-white font-bold text-lg group-hover:text-brand-accent transition-colors">${s.name}</h3>
+                                    <p class="text-xs text-zinc-500 font-mono mt-1">${s.id.substring(0,8)}</p>
+                                </div>
+                            </div>
+                            <div class="text-right">
+                                <div class="text-xs font-mono text-zinc-400 mb-1" onclick="event.stopPropagation(); copyIP('${s.ip || 'mnvibes.org'}')">${s.ip || 'mnvibes.org'}</div>
+                                <span class="inline-block px-2 py-0.5 rounded bg-green-500/10 text-green-500 text-[10px] font-bold border border-green-500/20">RUNNING</span>
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-3 gap-4 text-xs font-mono text-zinc-500">
+                            <div><div class="flex justify-between mb-1"><span>MEM</span><span class="text-white">${s.ramLimit || 2048}MB</span></div><div class="resource-bar"><div class="resource-fill w-[40%]"></div></div></div>
+                            <div><div class="flex justify-between mb-1"><span>CPU</span><span class="text-white">${s.cpuLimit || 100}%</span></div><div class="resource-bar"><div class="resource-fill w-[10%]"></div></div></div>
+                            <div><div class="flex justify-between mb-1"><span>DISK</span><span class="text-white">${s.diskLimit || 5120}MB</span></div><div class="resource-bar"><div class="resource-fill w-[20%]"></div></div></div>
+                        </div>
+                    </div>
+                `).join('');
+                
+                // Retry route if loading data mid-session
+                if(window.location.hash.startsWith('#server/') && !activeServer) {
+                    handleHash();
+                }
+            });
+        }
+
+        window.handlePower = (action) => {
+            addLog(`[Pterodactyl Daemon]: Server marked as ${action}ing...`);
+        };
+
+        // --- Init ---
+        onAuthStateChanged(auth, (user) => {
+            const loading = document.getElementById('loading-screen');
+            const login = document.getElementById('login-container');
+            const panel = document.getElementById('panel-container');
+
+            if (user) {
+                const email = user.email.trim().toLowerCase();
+                if (window.CryptoJS) {
+                    const hash = CryptoJS.MD5(email).toString();
+                    const avatar = document.getElementById('user-avatar');
+                    if(avatar) avatar.src = `https://www.gravatar.com/avatar/${hash}?d=retro`;
+                }
+                
+                loading.style.display = 'none';
+                login.style.display = 'none';
+                panel.classList.add('active');
+                
+                window.location.hash = window.location.hash || '#servers';
+                handleHash();
+            } else {
+                loading.style.display = 'none';
+                panel.classList.remove('active');
+                login.style.display = 'flex';
+                setTimeout(() => login.classList.add('active'), 10);
+            }
+        });
+
+        window.addEventListener('hashchange', handleHash);
+
+        // --- Login Logic (Keep previous) ---
+        window.handleLogin = async (e) => {
+            e.preventDefault();
+            const btn = document.getElementById('submitBtn');
+            const email = document.getElementById('user').value;
+            const pass = document.getElementById('password').value;
+            const rememberMe = document.getElementById('remember').checked;
+
+            try {
+                btn.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> Processing...';
+                
+                const persistenceMode = rememberMe ? browserLocalPersistence : browserSessionPersistence;
+                await setPersistence(auth, persistenceMode);
+
+                await signInWithEmailAndPassword(auth, email, pass);
+            } catch(e) {
+                alert('Login failed: ' + e.message);
+                btn.innerHTML = '<span>Initialize Session</span><i class="fas fa-arrow-right"></i>';
+            }
+        };
+        
+        window.handleLogout = () => signOut(auth);
+        
+        window.showToast = (msg, type) => {
+            console.log(type, msg);
+        };
+        
+        window.toggleView = (targetId) => {
+            const login = document.getElementById('view-login');
+            const forgot = document.getElementById('view-forgot');
+            
+            if (targetId === 'forgot') {
+                login.classList.remove('opacity-100');
+                login.classList.add('opacity-0');
+                setTimeout(() => {
+                    login.classList.add('hidden');
+                    forgot.classList.remove('hidden');
+                    requestAnimationFrame(() => {
+                        forgot.classList.remove('opacity-0');
+                        forgot.classList.add('opacity-100');
+                    });
+                }, 300);
+            } else {
+                forgot.classList.remove('opacity-100');
+                forgot.classList.add('opacity-0');
+                setTimeout(() => {
+                    forgot.classList.add('hidden');
+                    login.classList.remove('hidden');
+                    requestAnimationFrame(() => {
+                        login.classList.remove('opacity-0');
+                        login.classList.add('opacity-100');
+                    });
+                }, 300);
+            }
+        }
+
+        window.copyIP = (ip) => {
+            navigator.clipboard.writeText(ip);
+            // Could add a toast here
+            console.log("Copied IP", ip);
+        }
+
+        // Stats ticker for top bar
+        setInterval(() => {
+            const sys = document.getElementById('sys-load');
+            const cpu = document.getElementById('cpu-load');
+            if(sys) sys.innerText = (Math.random() * 16).toFixed(2) + ' GB';
+            if(cpu) cpu.innerText = Math.floor(Math.random() * 100) + '%';
+        }, 2000);
+    </script>
+</body>
+</html>
